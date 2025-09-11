@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     # El rol de Facturación puede leer, crear y actualizar, pero no eliminar
     billing_permissions = ProcessPermission(
-        read=True, create=True, update=False, delete=False
+        read=True, create=True, update=True, delete=False
     )
     billing_role.add_permission("facturacion", billing_permissions)
 
