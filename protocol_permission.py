@@ -1,4 +1,4 @@
-from typing import Protocol, Dict, Optional, Set
+from typing import Protocol
 
 
 class Permission(Protocol):
