@@ -7,17 +7,16 @@ class AuthManager:
     def __init__(self, db_conn):
         self.connection = db_conn
 
-    def _get_user(self, iduser):
-        with self.connection:
-            cur = self.connection.get_cursor()
-            cur.execute(
-                "SELECT idlogin, passw, intentos_fallidos, bloqueado FROM usuarios WHERE idusuario = ?",
-                (iduser,),
-            )
-            return cur.fetchone()
+    def _get_user(self, username):
+        cur = self.connection.get_cursor()
+        cur.execute(
+            "SELECT username, password, intentos_fallidos, bloqueado FROM users WHERE username = %s",
+            (username,),
+        )
+        return cur.fetchone()
 
-    def autenticar(self, iduser, password):
-        user = self._get_user(iduser)
+    def autenticar(self, username, password):
+        user = self._get_user(username)
         if not user:
             return False, "Usuario no encontrado"
 
@@ -39,27 +38,27 @@ class AuthManager:
                 f"Contraseña incorrecta. Intentos restantes: {self.MAX_INTENTOS - (intentos + 1)}",
             )
 
-    def _reset_intentos(self, idlogin):
+    def _reset_intentos(self, username):
         self.connection.execute(
-            "UPDATE usuarios SET intentos_fallidos = 0 WHERE idlogin = ?",
-            (idlogin,),
+            "UPDATE users SET intentos_fallidos = 0 WHERE username = %s",
+            (username,),
         )
 
-    def _incrementar_intentos(self, idlogin, intentos):
+    def _incrementar_intentos(self, username, intentos):
         self.connection.execute(
-            "UPDATE usuarios SET intentos_fallidos = ? WHERE idlogin = ?",
-            (intentos + 1, idlogin),
+            "UPDATE users SET intentos_fallidos = %s WHERE username = %s",
+            (intentos + 1, username),
         )
 
-    def _bloquear_usuario(self, idlogin):
+    def _bloquear_usuario(self, username):
         self.connection.execute(
-            "UPDATE usuarios SET bloqueado = 1 WHERE idlogin = ?", (idlogin,)
+            "UPDATE users SET bloqueado = 1 WHERE username = %s", (username,)
         )
 
     def registrar_usuario(self, iduser, nombre, password):
         hash_pass = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         self.connection.execute(
-            "INSERT INTO usuarios (idusuario, nombre, passw) VALUES (?, ?, ?)",
+            "INSERT INTO users (username, nombre, password) VALUES (%s, %s, %s)",
             (iduser, nombre, hash_pass),
         )
 
