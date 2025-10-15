@@ -46,9 +46,9 @@ class RoleManagerDB:
             JOIN roles r ON ur.role_id = r.id
             LEFT JOIN role_permissions rp ON r.id = rp.role_id
             LEFT JOIN processes p ON rp.process_id = p.id
-            WHERE ur.user_id = %s
+            WHERE ur.username = %s
         """
-        cursor.execute(sql_query, (user_data["id"],))
+        cursor.execute(sql_query, (user_data["username"],))
         permissions_data = cursor.fetchall()
 
         # 3. Reconstruir los objetos Role y Permission
@@ -98,20 +98,20 @@ if __name__ == "__main__":
     mysql_connector.connect()
     db = DatabaseConnector(mysql_connector)
     role_manager = RoleManagerDB(db)
-    user = role_manager.load_user_by_username("jdorantes")
+    user = role_manager.load_user_by_username("ADMIN")
     if user:
         print(f"--- Verificando permisos para {user.username} ---")
         print(
-            f"¿Puede leer en Encuentro? {'✅' if user.has_permission('Encuentro', 'read') else '❌'}"
+            f"¿Puede leer en Creyentes? {'✅' if user.has_permission('Creyentes', 'read') else '❌'}"
         )
         print(
-            f"¿Puede crear en Encuentro? {'✅' if user.has_permission('Encuentro', 'create') else '❌'}"
+            f"¿Puede crear en Creyentes? {'✅' if user.has_permission('Creyentes', 'create') else '❌'}"
         )
         print(
-            f"¿Puede actualizar en Encuentro? {'✅' if user.has_permission('Encuentro', 'update') else '❌'}"
+            f"¿Puede actualizar en Creyentes? {'✅' if user.has_permission('Creyentes', 'update') else '❌'}"
         )
         print(
-            f"¿Puede eliminar en Encuentro? {'✅' if user.has_permission('Encuentro', 'delete') else '❌'}"
+            f"¿Puede eliminar en Creyentes? {'✅' if user.has_permission('Creyentes', 'delete') else '❌'}"
         )
 
     else:
