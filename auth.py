@@ -2,6 +2,26 @@ import bcrypt
 
 
 class AuthManager:
+    def modificar_clave(self, username, nueva_password):
+        """
+        Modifica la contraseña de un usuario.
+        """
+        import logging
+
+        try:
+            hash_pass = bcrypt.hashpw(
+                nueva_password.encode(), bcrypt.gensalt()
+            ).decode()
+            cur = self.connection.get_cursor()
+            cur.execute(
+                "UPDATE users SET password = %s WHERE username = %s",
+                (hash_pass, username),
+            )
+            return True, "Contraseña actualizada correctamente."
+        except Exception as e:
+            logging.error(f"Error al modificar la contraseña para '{username}': {e}")
+            return False, f"Error al modificar la contraseña: {e}"
+
     MAX_INTENTOS = 5
 
     def __init__(self, db_conn):
@@ -94,7 +114,6 @@ class AuthManager:
                 "INSERT INTO users (username, name, password) VALUES (%s, %s, %s)",
                 (iduser, nombre, hash_pass),
             )
-            self.connection.connection.commit()
         except Exception as e:
             logging.error(f"Error al registrar usuario '{iduser}': {e}")
 
@@ -119,6 +138,8 @@ if __name__ == "__main__":
     )
     mysql_connector.connect()
     db = DatabaseConnector(mysql_connector)
+    # Habilitar autocommit
+    db.autocommit(True)
     auth = AuthManager(db)
     # print("=== Prueba de registro de usuario ===")
     # iduser = input("Usuario: ")
@@ -132,5 +153,13 @@ if __name__ == "__main__":
     password_login = input("Contraseña: ")
     ok, msg = auth.autenticar(iduser_login, password_login)
     print(msg)
-    db.connection.commit()
+
+    # print("=== Prueba de modificación de contraseña ===")
+    # iduser_mod = input("Usuario para modificar contraseña: ")
+    # nueva_password = input("Nueva contraseña: ")
+    # ok, msg = auth.modificar_clave(iduser_mod, nueva_password)
+    # print(msg)
+
+    # Deshabilitar autocommit
+    db.autocommit(False)
     db.close_connection()
