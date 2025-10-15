@@ -8,19 +8,30 @@ class AuthManager:
         self.connection = db_conn
 
     def _get_user(self, username):
-        cur = self.connection.get_cursor()
-        cur.execute(
-            "SELECT username, password, intentos_fallidos, bloqueado FROM users WHERE username = %s",
-            (username,),
-        )
-        return cur.fetchone()
+        import logging
+
+        try:
+            cur = self.connection.get_cursor()
+            cur.execute(
+                "SELECT username, password, name, intentos_fallidos, bloqueado FROM users WHERE username = %s",
+                (username,),
+            )
+            return cur.fetchone()
+        except Exception as e:
+            logging.error(f"Error al obtener usuario '{username}': {e}")
+            return None
 
     def autenticar(self, username, password):
         user = self._get_user(username)
         if not user:
             return False, "Usuario no encontrado"
 
-        idlogin, hash_pass, intentos, bloqueado = user
+        idlogin, hash_pass, intentos, bloqueado = (
+            user["username"],
+            user["password"],
+            user["intentos_fallidos"],
+            user["bloqueado"],
+        )
 
         if bloqueado:
             return False, "Usuario bloqueado por demasiados intentos fallidos"
@@ -39,28 +50,53 @@ class AuthManager:
             )
 
     def _reset_intentos(self, username):
-        self.connection.execute(
-            "UPDATE users SET intentos_fallidos = 0 WHERE username = %s",
-            (username,),
-        )
+        import logging
+
+        try:
+            cur = self.connection.get_cursor()
+            cur.execute(
+                "UPDATE users SET intentos_fallidos = 0 WHERE username = %s",
+                (username,),
+            )
+        except Exception as e:
+            logging.error(f"Error al resetear intentos para '{username}': {e}")
 
     def _incrementar_intentos(self, username, intentos):
-        self.connection.execute(
-            "UPDATE users SET intentos_fallidos = %s WHERE username = %s",
-            (intentos + 1, username),
-        )
+        import logging
+
+        try:
+            cur = self.connection.get_cursor()
+            cur.execute(
+                "UPDATE users SET intentos_fallidos = %s WHERE username = %s",
+                (intentos + 1, username),
+            )
+        except Exception as e:
+            logging.error(f"Error al incrementar intentos para '{username}': {e}")
 
     def _bloquear_usuario(self, username):
-        self.connection.execute(
-            "UPDATE users SET bloqueado = 1 WHERE username = %s", (username,)
-        )
+        import logging
+
+        try:
+            cur = self.connection.get_cursor()
+            cur.execute(
+                "UPDATE users SET bloqueado = 1 WHERE username = %s", (username,)
+            )
+        except Exception as e:
+            logging.error(f"Error al bloquear usuario '{username}': {e}")
 
     def registrar_usuario(self, iduser, nombre, password):
-        hash_pass = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-        self.connection.execute(
-            "INSERT INTO users (username, nombre, password) VALUES (%s, %s, %s)",
-            (iduser, nombre, hash_pass),
-        )
+        import logging
+
+        try:
+            hash_pass = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            cur = self.connection.get_cursor()
+            cur.execute(
+                "INSERT INTO users (username, name, password) VALUES (%s, %s, %s)",
+                (iduser, nombre, hash_pass),
+            )
+            self.connection.connection.commit()
+        except Exception as e:
+            logging.error(f"Error al registrar usuario '{iduser}': {e}")
 
 
 if __name__ == "__main__":
@@ -96,3 +132,5 @@ if __name__ == "__main__":
     password_login = input("Contraseña: ")
     ok, msg = auth.autenticar(iduser_login, password_login)
     print(msg)
+    db.connection.commit()
+    db.close_connection()
