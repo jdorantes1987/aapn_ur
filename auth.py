@@ -124,7 +124,7 @@ if __name__ == "__main__":
 
     from dotenv import load_dotenv
 
-    sys.path.append("..\\profit")
+    sys.path.append("..\\conexiones")
     from conn.database_connector import DatabaseConnector
     from conn.mysql_connector import MySQLConnector
 
