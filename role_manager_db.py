@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from process_permission import ProcessPermission
@@ -12,13 +13,13 @@ class RoleManagerDB:
 
     def __init__(self, db_conn):
         self.connection = db_conn
+        self.logger = logging.getLogger(__class__.__name__)
 
     def load_user_by_username(self, username: str) -> Optional[User]:
         """
         Carga un usuario y todos sus roles y permisos asociados desde la BD.
         Retorna un objeto User completamente populado o None si no se encuentra.
         """
-        import logging
 
         try:
             cursor = self.connection.get_cursor()
@@ -76,7 +77,7 @@ class RoleManagerDB:
 
             return user
         except Exception as e:
-            logging.error(f"Error al cargar usuario '{username}': {e}")
+            self.logger.error(f"Error al cargar usuario '{username}': {e}")
             return None
 
 
@@ -94,6 +95,12 @@ if __name__ == "__main__":
 
     load_dotenv(override=True)
 
+    # Configurar logging básico si el usuario no proporciona configuración
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
+
     mysql_connector = MySQLConnector(
         host=os.environ["DB_HOST"],
         database=os.environ["DB_NAME"],
@@ -103,7 +110,7 @@ if __name__ == "__main__":
     mysql_connector.connect()
     db = DatabaseConnector(mysql_connector)
     role_manager = RoleManagerDB(db)
-    user = role_manager.load_user_by_username("jdorantes")
+    user = role_manager.load_user_by_username("amini")
     if user:
         print(f"--- Verificando permisos para {user.username} ---")
         print(

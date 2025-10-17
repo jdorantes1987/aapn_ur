@@ -1,35 +1,20 @@
+import logging
+import logging.config
+
 import bcrypt
 
 
+logging.config.fileConfig("logging.ini")
+
+
 class AuthManager:
-    def modificar_clave(self, username, nueva_password):
-        """
-        Modifica la contraseña de un usuario.
-        """
-        import logging
-
-        try:
-            hash_pass = bcrypt.hashpw(
-                nueva_password.encode(), bcrypt.gensalt()
-            ).decode()
-            cur = self.connection.get_cursor()
-            cur.execute(
-                "UPDATE users SET password = %s WHERE username = %s",
-                (hash_pass, username),
-            )
-            return True, "Contraseña actualizada correctamente."
-        except Exception as e:
-            logging.error(f"Error al modificar la contraseña para '{username}': {e}")
-            return False, f"Error al modificar la contraseña: {e}"
-
     MAX_INTENTOS = 5
 
     def __init__(self, db_conn):
         self.connection = db_conn
+        self.logger = logging.getLogger(__class__.__name__)
 
     def _get_user(self, username):
-        import logging
-
         try:
             cur = self.connection.get_cursor()
             cur.execute(
@@ -38,7 +23,7 @@ class AuthManager:
             )
             return cur.fetchone()
         except Exception as e:
-            logging.error(f"Error al obtener usuario '{username}': {e}")
+            self.logger.error(f"Error al obtener usuario '{username}': {e}")
             return None
 
     def autenticar(self, username, password):
@@ -54,24 +39,26 @@ class AuthManager:
         )
 
         if bloqueado:
-            return False, "Usuario bloqueado por demasiados intentos fallidos"
+            msg = f"Usuario '{username}' bloqueado por demasiados intentos fallidos"
+            self.logger.warning(msg)
+            return False, msg
 
         if bcrypt.checkpw(password.encode(), hash_pass.encode()):
             self._reset_intentos(idlogin)
+            self.logger.info(f"Usuario '{username}' autenticado exitosamente")
             return True, "Autenticación exitosa"
         else:
             self._incrementar_intentos(idlogin, intentos)
             if intentos + 1 >= self.MAX_INTENTOS:
                 self._bloquear_usuario(idlogin)
                 return False, "Usuario bloqueado por demasiados intentos fallidos"
+            self.logger.warning(f"Contraseña incorrecta para '{username}'.")
             return (
                 False,
                 f"Contraseña incorrecta. Intentos restantes: {self.MAX_INTENTOS - (intentos + 1)}",
             )
 
     def _reset_intentos(self, username):
-        import logging
-
         try:
             cur = self.connection.get_cursor()
             cur.execute(
@@ -79,11 +66,9 @@ class AuthManager:
                 (username,),
             )
         except Exception as e:
-            logging.error(f"Error al resetear intentos para '{username}': {e}")
+            self.logger.error(f"Error al resetear intentos para '{username}': {e}")
 
     def _incrementar_intentos(self, username, intentos):
-        import logging
-
         try:
             cur = self.connection.get_cursor()
             cur.execute(
@@ -91,22 +76,18 @@ class AuthManager:
                 (intentos + 1, username),
             )
         except Exception as e:
-            logging.error(f"Error al incrementar intentos para '{username}': {e}")
+            self.logger.error(f"Error al incrementar intentos para '{username}': {e}")
 
     def _bloquear_usuario(self, username):
-        import logging
-
         try:
             cur = self.connection.get_cursor()
             cur.execute(
                 "UPDATE users SET bloqueado = 1 WHERE username = %s", (username,)
             )
         except Exception as e:
-            logging.error(f"Error al bloquear usuario '{username}': {e}")
+            self.logger.error(f"Error al bloquear usuario '{username}': {e}")
 
     def registrar_usuario(self, iduser, nombre, password):
-        import logging
-
         try:
             hash_pass = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
             cur = self.connection.get_cursor()
@@ -114,8 +95,41 @@ class AuthManager:
                 "INSERT INTO users (username, name, password) VALUES (%s, %s, %s)",
                 (iduser, nombre, hash_pass),
             )
+            self.logger.info(f"Usuario '{iduser}' registrado exitosamente.")
         except Exception as e:
-            logging.error(f"Error al registrar usuario '{iduser}': {e}")
+            self.logger.error(f"Error al registrar usuario '{iduser}': {e}")
+
+    def modificar_clave(self, username, nueva_password):
+        """
+        Modifica la contraseña de un usuario.
+        """
+        user = self._get_user(username)
+        if not user:
+            return False, "Usuario no encontrado"
+
+        bloqueado = user["bloqueado"]
+
+        if bloqueado:
+            msg = (
+                f"Usuario '{username}' bloqueado. No se puede modificar la contraseña."
+            )
+            self.logger.warning(msg)
+            return False, msg
+        try:
+            hash_pass = bcrypt.hashpw(
+                nueva_password.encode(), bcrypt.gensalt()
+            ).decode()
+            cur = self.connection.get_cursor()
+            cur.execute(
+                "UPDATE users SET password = %s WHERE username = %s",
+                (hash_pass, username),
+            )
+            self.logger.info(f"Contraseña modificada para '{username}'.")
+            return True, "Contraseña actualizada correctamente."
+        except Exception as e:
+            msg = f"Error al modificar la contraseña para '{username}': {e}"
+            self.logger.error(msg)
+            return False, msg
 
 
 if __name__ == "__main__":
@@ -148,17 +162,17 @@ if __name__ == "__main__":
     # auth.registrar_usuario(iduser, nombre, password)
     # print("Usuario registrado.\n")
 
-    print("=== Prueba de autenticación ===")
-    iduser_login = input("Usuario para login: ")
-    password_login = input("Contraseña: ")
-    ok, msg = auth.autenticar(iduser_login, password_login)
-    print(msg)
-
-    # print("=== Prueba de modificación de contraseña ===")
-    # iduser_mod = input("Usuario para modificar contraseña: ")
-    # nueva_password = input("Nueva contraseña: ")
-    # ok, msg = auth.modificar_clave(iduser_mod, nueva_password)
+    # print("=== Prueba de autenticación ===")
+    # iduser_login = input("Usuario para login: ")
+    # password_login = input("Contraseña: ")
+    # ok, msg = auth.autenticar(iduser_login, password_login)
     # print(msg)
+
+    print("=== Prueba de modificación de contraseña ===")
+    iduser_mod = input("Usuario para modificar contraseña: ")
+    nueva_password = input("Nueva contraseña: ")
+    ok, msg = auth.modificar_clave(iduser_mod, nueva_password)
+    print(msg)
 
     # Deshabilitar autocommit
     db.autocommit(False)
