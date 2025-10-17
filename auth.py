@@ -26,7 +26,7 @@ class AuthManager:
             self.logger.error(f"Error al obtener usuario '{username}': {e}")
             return None
 
-    def autenticar(self, username, password):
+    def autenticar(self, username, password) -> tuple[bool, str]:
         user = self._get_user(username)
         if not user:
             return False, "Usuario no encontrado"
@@ -87,7 +87,7 @@ class AuthManager:
         except Exception as e:
             self.logger.error(f"Error al bloquear usuario '{username}': {e}")
 
-    def registrar_usuario(self, iduser, nombre, password):
+    def registrar_usuario(self, iduser, nombre, password) -> tuple[bool, str]:
         try:
             hash_pass = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
             cur = self.connection.get_cursor()
@@ -96,10 +96,12 @@ class AuthManager:
                 (iduser, nombre, hash_pass),
             )
             self.logger.info(f"Usuario '{iduser}' registrado exitosamente.")
+            return True, "Registro exitoso"
         except Exception as e:
             self.logger.error(f"Error al registrar usuario '{iduser}': {e}")
+            return False, "Error en el registro"
 
-    def modificar_clave(self, username, nueva_password):
+    def modificar_clave(self, username, nueva_password) -> tuple[bool, str]:
         """
         Modifica la contraseña de un usuario.
         """
@@ -162,12 +164,12 @@ if __name__ == "__main__":
     # Habilitar autocommit
     db.autocommit(True)
     auth = AuthManager(db)
-    # print("=== Prueba de registro de usuario ===")
-    # iduser = input("Usuario: ")
-    # nombre = input("Nombre: ")
-    # password = input("Contraseña: ")
-    # auth.registrar_usuario(iduser, nombre, password)
-    # print("Usuario registrado.\n")
+    print("=== Prueba de registro de usuario ===")
+    iduser = input("Usuario: ")
+    nombre = input("Nombre: ")
+    password = input("Contraseña: ")
+    auth.registrar_usuario(iduser, nombre, password)
+    print("Usuario registrado.\n")
 
     # print("=== Prueba de autenticación ===")
     # iduser_login = input("Usuario para login: ")
@@ -181,10 +183,10 @@ if __name__ == "__main__":
     # ok, msg = auth.modificar_clave(iduser_mod, nueva_password)
     # print(msg)
 
-    print("=== Prueba de existencia de usuario ===")
-    iduser_check = input("Usuario a verificar: ")
-    existe = auth.user_existe(iduser_check)
-    print(f"El usuario '{iduser_check}' {'existe' if existe else 'no existe'}.")
+    # print("=== Prueba de existencia de usuario ===")
+    # iduser_check = input("Usuario a verificar: ")
+    # existe = auth.user_existe(iduser_check)
+    # print(f"El usuario '{iduser_check}' {'existe' if existe else 'no existe'}.")
 
     # Deshabilitar autocommit
     db.autocommit(False)
