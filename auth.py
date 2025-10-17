@@ -131,6 +131,13 @@ class AuthManager:
             self.logger.error(msg)
             return False, msg
 
+    def user_existe(self, username) -> bool:
+        """
+        Verifica si un usuario existe.
+        """
+        user = self._get_user(username)
+        return user is not None
+
 
 if __name__ == "__main__":
     import os
@@ -168,11 +175,16 @@ if __name__ == "__main__":
     # ok, msg = auth.autenticar(iduser_login, password_login)
     # print(msg)
 
-    print("=== Prueba de modificación de contraseña ===")
-    iduser_mod = input("Usuario para modificar contraseña: ")
-    nueva_password = input("Nueva contraseña: ")
-    ok, msg = auth.modificar_clave(iduser_mod, nueva_password)
-    print(msg)
+    # print("=== Prueba de modificación de contraseña ===")
+    # iduser_mod = input("Usuario para modificar contraseña: ")
+    # nueva_password = input("Nueva contraseña: ")
+    # ok, msg = auth.modificar_clave(iduser_mod, nueva_password)
+    # print(msg)
+
+    print("=== Prueba de existencia de usuario ===")
+    iduser_check = input("Usuario a verificar: ")
+    existe = auth.user_existe(iduser_check)
+    print(f"El usuario '{iduser_check}' {'existe' if existe else 'no existe'}.")
 
     # Deshabilitar autocommit
     db.autocommit(False)
