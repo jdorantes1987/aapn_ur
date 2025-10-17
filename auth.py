@@ -4,10 +4,8 @@ import logging.config
 import bcrypt
 
 
-logging.config.fileConfig("logging.ini")
-
-
 class AuthManager:
+    logging.config.fileConfig("logging.ini")
     MAX_INTENTOS = 5
 
     def __init__(self, db_conn):
@@ -164,18 +162,19 @@ if __name__ == "__main__":
     # Habilitar autocommit
     db.autocommit(True)
     auth = AuthManager(db)
-    print("=== Prueba de registro de usuario ===")
-    iduser = input("Usuario: ")
-    nombre = input("Nombre: ")
-    password = input("Contraseña: ")
-    auth.registrar_usuario(iduser, nombre, password)
-    print("Usuario registrado.\n")
 
-    # print("=== Prueba de autenticación ===")
-    # iduser_login = input("Usuario para login: ")
-    # password_login = input("Contraseña: ")
-    # ok, msg = auth.autenticar(iduser_login, password_login)
-    # print(msg)
+    # print("=== Prueba de registro de usuario ===")
+    # iduser = input("Usuario: ")
+    # nombre = input("Nombre: ")
+    # password = input("Contraseña: ")
+    # auth.registrar_usuario(iduser, nombre, password)
+    # print("Usuario registrado.\n")
+
+    print("=== Prueba de autenticación ===")
+    iduser_login = input("Usuario para login: ")
+    password_login = input("Contraseña: ")
+    ok, msg = auth.autenticar(iduser_login, password_login)
+    print(msg)
 
     # print("=== Prueba de modificación de contraseña ===")
     # iduser_mod = input("Usuario para modificar contraseña: ")
