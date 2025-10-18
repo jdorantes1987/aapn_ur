@@ -35,6 +35,7 @@ class AuthManager:
             user["intentos_fallidos"],
             user["bloqueado"],
         )
+        self.connection.autocommit(True)
 
         if bloqueado:
             msg = f"Usuario '{username}' bloqueado por demasiados intentos fallidos"
@@ -44,6 +45,7 @@ class AuthManager:
         if bcrypt.checkpw(password.encode(), hash_pass.encode()):
             self._reset_intentos(idlogin)
             self.logger.info(f"Usuario '{username}' autenticado exitosamente")
+            self.connection.autocommit(False)
             return True, "Autenticación exitosa"
         else:
             self._incrementar_intentos(idlogin, intentos)
@@ -51,6 +53,7 @@ class AuthManager:
                 self._bloquear_usuario(idlogin)
                 return False, "Usuario bloqueado por demasiados intentos fallidos"
             self.logger.warning(f"Contraseña incorrecta para '{username}'.")
+            self.connection.autocommit(False)
             return (
                 False,
                 f"Contraseña incorrecta. Intentos restantes: {self.MAX_INTENTOS - (intentos + 1)}",
@@ -160,7 +163,6 @@ if __name__ == "__main__":
     mysql_connector.connect()
     db = DatabaseConnector(mysql_connector)
     # Habilitar autocommit
-    db.autocommit(True)
     auth = AuthManager(db)
 
     # print("=== Prueba de registro de usuario ===")
@@ -188,5 +190,4 @@ if __name__ == "__main__":
     # print(f"El usuario '{iduser_check}' {'existe' if existe else 'no existe'}.")
 
     # Deshabilitar autocommit
-    db.autocommit(False)
     db.close_connection()
