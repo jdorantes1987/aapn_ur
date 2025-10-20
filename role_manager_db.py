@@ -110,7 +110,7 @@ if __name__ == "__main__":
     mysql_connector.connect()
     db = DatabaseConnector(mysql_connector)
     role_manager = RoleManagerDB(db)
-    user = role_manager.load_user_by_username("amini")
+    user = role_manager.load_user_by_username("admin")
     if user:
         print(f"--- Verificando permisos para {user.username} ---")
         print(
