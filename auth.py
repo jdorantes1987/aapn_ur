@@ -91,11 +91,13 @@ class AuthManager:
     def registrar_usuario(self, iduser, nombre, password) -> tuple[bool, str]:
         try:
             hash_pass = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            self.connection.autocommit(True)
             cur = self.connection.get_cursor()
             cur.execute(
                 "INSERT INTO users (username, name, password) VALUES (%s, %s, %s)",
                 (iduser, nombre, hash_pass),
             )
+            self.connection.autocommit(False)
             self.logger.info(f"Usuario '{iduser}' registrado exitosamente.")
             return True, "Registro exitoso"
         except Exception as e:
@@ -122,11 +124,13 @@ class AuthManager:
             hash_pass = bcrypt.hashpw(
                 nueva_password.encode(), bcrypt.gensalt()
             ).decode()
+            self.connection.autocommit(True)
             cur = self.connection.get_cursor()
             cur.execute(
                 "UPDATE users SET password = %s WHERE username = %s",
                 (hash_pass, username),
             )
+            self.connection.autocommit(False)
             self.logger.info(f"Contraseña modificada para '{username}'.")
             return True, "Contraseña actualizada correctamente."
         except Exception as e:
@@ -162,7 +166,6 @@ if __name__ == "__main__":
     )
     mysql_connector.connect()
     db = DatabaseConnector(mysql_connector)
-    # Habilitar autocommit
     auth = AuthManager(db)
 
     # print("=== Prueba de registro de usuario ===")
@@ -189,5 +192,4 @@ if __name__ == "__main__":
     # existe = auth.user_existe(iduser_check)
     # print(f"El usuario '{iduser_check}' {'existe' if existe else 'no existe'}.")
 
-    # Deshabilitar autocommit
     db.close_connection()
