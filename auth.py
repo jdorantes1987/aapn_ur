@@ -8,13 +8,13 @@ class AuthManager:
     logging.config.fileConfig("logging.ini")
     MAX_INTENTOS = 5
 
-    def __init__(self, db_conn):
-        self.connection = db_conn
+    def __init__(self, db):
+        self.db = db
         self.logger = logging.getLogger(__class__.__name__)
 
     def _get_user(self, username):
         try:
-            cur = self.connection.get_cursor()
+            cur = self.db.get_cursor()
             cur.execute(
                 "SELECT username, password, name, intentos_fallidos, bloqueado FROM users WHERE username = %s",
                 (username,),
@@ -25,6 +25,7 @@ class AuthManager:
             return None
 
     def autenticar(self, username, password) -> tuple[bool, str]:
+        self.db.connection.connect()
         user = self._get_user(username)
         if not user:
             return False, "Usuario no encontrado"
@@ -35,7 +36,7 @@ class AuthManager:
             user["intentos_fallidos"],
             user["bloqueado"],
         )
-        self.connection.autocommit(True)
+        self.db.autocommit(True)
 
         if bloqueado:
             msg = f"Usuario '{username}' bloqueado por demasiados intentos fallidos"
@@ -45,7 +46,8 @@ class AuthManager:
         if bcrypt.checkpw(password.encode(), hash_pass.encode()):
             self._reset_intentos(idlogin)
             self.logger.info(f"Usuario '{username}' autenticado exitosamente")
-            self.connection.autocommit(False)
+            self.db.autocommit(False)
+            self.db.close_connection()
             return True, "Autenticación exitosa"
         else:
             self._incrementar_intentos(idlogin, intentos)
@@ -53,7 +55,8 @@ class AuthManager:
                 self._bloquear_usuario(idlogin)
                 return False, "Usuario bloqueado por demasiados intentos fallidos"
             self.logger.warning(f"Contraseña incorrecta para '{username}'.")
-            self.connection.autocommit(False)
+            self.db.autocommit(False)
+            self.db.close_connection()
             return (
                 False,
                 f"Contraseña incorrecta. Intentos restantes: {self.MAX_INTENTOS - (intentos + 1)}",
@@ -61,7 +64,7 @@ class AuthManager:
 
     def _reset_intentos(self, username):
         try:
-            cur = self.connection.get_cursor()
+            cur = self.db.get_cursor()
             cur.execute(
                 "UPDATE users SET intentos_fallidos = 0 WHERE username = %s",
                 (username,),
@@ -71,7 +74,7 @@ class AuthManager:
 
     def _incrementar_intentos(self, username, intentos):
         try:
-            cur = self.connection.get_cursor()
+            cur = self.db.get_cursor()
             cur.execute(
                 "UPDATE users SET intentos_fallidos = %s WHERE username = %s",
                 (intentos + 1, username),
@@ -81,7 +84,7 @@ class AuthManager:
 
     def _bloquear_usuario(self, username):
         try:
-            cur = self.connection.get_cursor()
+            cur = self.db.get_cursor()
             cur.execute(
                 "UPDATE users SET bloqueado = 1 WHERE username = %s", (username,)
             )
@@ -90,24 +93,28 @@ class AuthManager:
 
     def registrar_usuario(self, iduser, nombre, password) -> tuple[bool, str]:
         try:
+            self.db.connection.connect()
             hash_pass = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            self.connection.autocommit(True)
-            cur = self.connection.get_cursor()
+            self.db.autocommit(True)
+            cur = self.db.get_cursor()
             cur.execute(
                 "INSERT INTO users (username, name, password) VALUES (%s, %s, %s)",
                 (iduser, nombre, hash_pass),
             )
-            self.connection.autocommit(False)
+            self.db.autocommit(False)
             self.logger.info(f"Usuario '{iduser}' registrado exitosamente.")
             return True, "Registro exitoso"
         except Exception as e:
             self.logger.error(f"Error al registrar usuario '{iduser}': {e}")
             return False, "Error en el registro"
+        finally:
+            self.db.close_connection()
 
     def modificar_clave(self, username, nueva_password) -> tuple[bool, str]:
         """
         Modifica la contraseña de un usuario.
         """
+        self.db.connection.connect()
         user = self._get_user(username)
         if not user:
             return False, "Usuario no encontrado"
@@ -124,25 +131,29 @@ class AuthManager:
             hash_pass = bcrypt.hashpw(
                 nueva_password.encode(), bcrypt.gensalt()
             ).decode()
-            self.connection.autocommit(True)
-            cur = self.connection.get_cursor()
+            self.db.autocommit(True)
+            cur = self.db.get_cursor()
             cur.execute(
                 "UPDATE users SET password = %s WHERE username = %s",
                 (hash_pass, username),
             )
-            self.connection.autocommit(False)
+            self.db.autocommit(False)
             self.logger.info(f"Contraseña modificada para '{username}'.")
             return True, "Contraseña actualizada correctamente."
         except Exception as e:
             msg = f"Error al modificar la contraseña para '{username}': {e}"
             self.logger.error(msg)
             return False, msg
+        finally:
+            self.db.close_connection()
 
     def user_existe(self, username) -> bool:
         """
         Verifica si un usuario existe.
         """
+        self.db.connection.connect()
         user = self._get_user(username)
+        self.db.close_connection()
         return user is not None
 
 
@@ -191,5 +202,3 @@ if __name__ == "__main__":
     # iduser_check = input("Usuario a verificar: ")
     # existe = auth.user_existe(iduser_check)
     # print(f"El usuario '{iduser_check}' {'existe' if existe else 'no existe'}.")
-
-    db.close_connection()
