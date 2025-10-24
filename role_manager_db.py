@@ -11,8 +11,8 @@ class RoleManagerDB:
     Gestiona la carga de usuarios, roles y permisos desde una base de datos MySQL.
     """
 
-    def __init__(self, db_conn):
-        self.connection = db_conn
+    def __init__(self, db):
+        self.db = db
         self.logger = logging.getLogger(__class__.__name__)
 
     def load_user_by_username(self, username: str) -> Optional[User]:
@@ -22,7 +22,8 @@ class RoleManagerDB:
         """
 
         try:
-            cursor = self.connection.get_cursor()
+            self.db.connection.connect()
+            cursor = self.db.get_cursor()
 
             # 1. Buscar al usuario
             cursor.execute(
@@ -53,6 +54,7 @@ class RoleManagerDB:
             """
             cursor.execute(sql_query, (user_data["username"],))
             permissions_data = cursor.fetchall()
+            self.db.close_connection()
 
             # 3. Reconstruir los objetos Role y Permission
             roles_map = {}
